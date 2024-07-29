@@ -67,7 +67,7 @@ public class ScrapingController {
 
         for(Element element : elements) {
             BestPost bestPost = new BestPost();
-            bestPost.setUrl(scrapingConfig.getClienBestUrl() + URLDecoder.decode(element.select(scrapingConfig.getClienUrlCssQuery()).attr("href"), StandardCharsets.UTF_8));
+            bestPost.setUrl(scrapingConfig.getClienHomeUrl() + URLDecoder.decode(element.select(scrapingConfig.getClienUrlCssQuery()).attr("href"), StandardCharsets.UTF_8));
             bestPost.setTitle(element.select(scrapingConfig.getClienTitleCssQuery()).attr("title"));
             bestPost.setSiteName(CLIEN);
             if (bestPost.getTitle().isEmpty()) continue;
