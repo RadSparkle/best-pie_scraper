@@ -4,6 +4,7 @@ import com.bestpie.scraper.api.service.ScrapingServiceImpl;
 import com.bestpie.scraper.common.entity.BestPost;
 import com.bestpie.scraper.common.utils.SSL;
 import com.bestpie.scraper.config.ScrapingConfig;
+import jakarta.annotation.PreDestroy;
 import lombok.AllArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.jsoup.Jsoup;
@@ -95,6 +96,10 @@ public class ScrapingController {
             bestPost.setSiteName(BOBAE);
             scrapingService.savePost(bestPost);
         }
+    }
+    @PreDestroy
+    public void shutdownExcutorService() {
+        executorService.shutdown();
     }
 
     public Document getWebPage(String url) {
