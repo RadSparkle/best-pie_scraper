@@ -55,7 +55,7 @@ public class ScrapingController {
         Elements elements = getWebPage(scrapingConfig.getDcinsideBestUrl()).select(scrapingConfig.getDcinsidePostListCssQuery());
         for(Element element : elements) {
             BestPost bestPost = new BestPost();
-            bestPost.setUrl(URLDecoder.decode(element.select(scrapingConfig.getDcinsideUrlCssQuery()).attr("href"), StandardCharsets.UTF_8));
+            bestPost.setUrl(scrapingConfig.getDcinsideHomeUrl() + URLDecoder.decode(element.select("a").attr("href"), StandardCharsets.UTF_8));
             bestPost.setTitle(element.selectFirst("a").text());
             bestPost.setSiteName(DCINSIDE);
             scrapingService.savePost(bestPost);
