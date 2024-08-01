@@ -11,6 +11,8 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -26,6 +28,8 @@ import java.util.concurrent.Executors;
 @AllArgsConstructor
 @Log4j2
 public class ScrapingController {
+    @Autowired
+    private RedisTemplate<String, String> redisTemplate;
 
     private ScrapingServiceImpl scrapingService;
 
@@ -58,7 +62,16 @@ public class ScrapingController {
             bestPost.setUrl(scrapingConfig.getDcinsideHomeUrl() + URLDecoder.decode(element.select("a").attr("href"), StandardCharsets.UTF_8));
             bestPost.setTitle(element.selectFirst("a").text());
             bestPost.setSiteName(DCINSIDE);
-            scrapingService.savePost(bestPost);
+
+            //게시글 상세내용 가져오기
+            Document document = getWebPage(bestPost.getUrl());
+            Element contentElement = document.selectFirst("div.write_div");
+            String content = contentElement.text();
+
+            //DB 저장 및 Kafka로 전송
+            Long id = scrapingService.savePost(bestPost);
+
+            redisTemplate.opsForValue().set(id.toString(), content);
         }
     }
 
@@ -70,8 +83,19 @@ public class ScrapingController {
             bestPost.setUrl(scrapingConfig.getClienHomeUrl() + URLDecoder.decode(element.select(scrapingConfig.getClienUrlCssQuery()).attr("href"), StandardCharsets.UTF_8));
             bestPost.setTitle(element.select(scrapingConfig.getClienTitleCssQuery()).attr("title"));
             bestPost.setSiteName(CLIEN);
+
+            //게시글 제목이 없을시 처리안하고 다음 게시글로
             if (bestPost.getTitle().isEmpty()) continue;
-            scrapingService.savePost(bestPost);
+
+            //게시글 상세내용 가져오기
+            Document document = getWebPage(bestPost.getUrl());
+            Element contentElement = document.selectFirst("div.post_content");
+            String content = contentElement.text();
+
+            //게시글 DB 저장 및 Kafka로 송신
+            Long id = scrapingService.savePost(bestPost);
+
+            redisTemplate.opsForValue().set(id.toString(), content);
         }
     }
 
@@ -83,7 +107,16 @@ public class ScrapingController {
             bestPost.setUrl(url);
             bestPost.setTitle(element.select("h2").text());
             bestPost.setSiteName(NATE);
-            scrapingService.savePost(bestPost);
+
+            //게시글 상세 내용 가져오기
+            Document document = getWebPage(bestPost.getUrl());
+            Element contentElement = document.getElementById("contentArea");
+            String content = contentElement.text();
+
+            // DB 저장 및 kafka 로 송신
+            Long id = scrapingService.savePost(bestPost);
+
+            redisTemplate.opsForValue().set(id.toString(), content);
         }
     }
 
@@ -94,9 +127,19 @@ public class ScrapingController {
             bestPost.setUrl(scrapingConfig.getBobaeHomeUrl() + element.select(scrapingConfig.getBobaeUrlCssQuery()).attr("href"));
             bestPost.setTitle(element.select(scrapingConfig.getBobaeTitleCssQuery()).text());
             bestPost.setSiteName(BOBAE);
-            scrapingService.savePost(bestPost);
+
+            //게시글 상세내용 가져오기
+            Document document = getWebPage(bestPost.getUrl());
+            Element contentElement = document.selectFirst("div.bodyCont");
+            String content = contentElement.text();
+
+            //DB 저장 및 Kafka로 데이터 송신
+            Long id = scrapingService.savePost(bestPost);
+
+            redisTemplate.opsForValue().set(id.toString(), content);
         }
     }
+
     @PreDestroy
     public void shutdownExcutorService() {
         executorService.shutdown();
