@@ -25,4 +25,7 @@ public class BestPost implements Serializable {
 
     @Column(name = "url")
     private String url;
+
+    @Column(name = "scraped_at")
+    private String scrapedAt;
 }
