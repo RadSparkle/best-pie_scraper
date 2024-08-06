@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class TimeUtil {
-    private static final DateTimeFormatter FORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm");
+    private static final DateTimeFormatter FORMATTER = DateTimeFormat.forPattern("yyyyMMddHHmm");
 
     public static String getCurrentTime() {
         DateTime dateTime = new DateTime();
