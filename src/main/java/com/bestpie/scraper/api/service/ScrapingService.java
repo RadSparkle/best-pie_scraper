@@ -4,5 +4,5 @@ import com.bestpie.scraper.common.entity.BestPost;
 
 public interface ScrapingService {
 
-    Long savePost(BestPost bestPost);
+    Long savePost(BestPost bestPost) throws InterruptedException;
 }
