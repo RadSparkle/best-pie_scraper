@@ -3,12 +3,11 @@ package com.bestpie.scraper.api.controller;
 import com.bestpie.scraper.api.service.ScrapingServiceImpl;
 import com.bestpie.scraper.common.entity.BestPost;
 import com.bestpie.scraper.common.utils.SSL;
-import com.bestpie.scraper.common.utils.TimeUtil;
+import com.bestpie.scraper.common.utils.ScrapeUtil;
 import com.bestpie.scraper.config.ScrapingConfig;
 import jakarta.annotation.PreDestroy;
 import lombok.AllArgsConstructor;
 import lombok.extern.log4j.Log4j2;
-import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
@@ -17,11 +16,8 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.io.IOException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -57,7 +53,7 @@ public class ScrapingController {
     }
 
     public void dcinsideScraping() {
-        Elements elements = getWebPage(scrapingConfig.getDcinsideBestUrl()).select(scrapingConfig.getDcinsidePostListCssQuery());
+        Elements elements = ScrapeUtil.getWebPage(scrapingConfig.getDcinsideBestUrl()).select(scrapingConfig.getDcinsidePostListCssQuery());
         for(Element element : elements) {
             BestPost bestPost = new BestPost();
             bestPost.setUrl(scrapingConfig.getDcinsideHomeUrl() + URLDecoder.decode(element.select("a").attr("href"), StandardCharsets.UTF_8));
@@ -65,18 +61,17 @@ public class ScrapingController {
             bestPost.setSiteName(DCINSIDE);
 
             //게시글 상세내용 가져오기
-            Document document = getWebPage(bestPost.getUrl());
+            Document document = ScrapeUtil.getWebPage(bestPost.getUrl());
             Element contentElement = document.selectFirst("div.write_div");
             String content = contentElement.text();
             //DB 저장 및 Kafka로 전송
-            Long id = scrapingService.savePost(bestPost);
-            if (id != null) redisTemplate.opsForValue().set(id.toString(), content);
+            save(bestPost, content);
 
         }
     }
 
     public void clienScraping() {
-        Elements elements = getWebPage(scrapingConfig.getClienBestUrl()).select(scrapingConfig.getClienPostListCssQuery());
+        Elements elements = ScrapeUtil.getWebPage(scrapingConfig.getClienBestUrl()).select(scrapingConfig.getClienPostListCssQuery());
 
         for(Element element : elements) {
             BestPost bestPost = new BestPost();
@@ -88,18 +83,17 @@ public class ScrapingController {
             if (bestPost.getTitle().isEmpty()) continue;
 
             //게시글 상세내용 가져오기
-            Document document = getWebPage(bestPost.getUrl());
+            Document document = ScrapeUtil.getWebPage(bestPost.getUrl());
             Element contentElement = document.selectFirst("div.post_content");
             String content = contentElement.text();
 
             //게시글 DB 저장 및 Kafka로 송신
-            Long id = scrapingService.savePost(bestPost);
-            if (id != null) redisTemplate.opsForValue().set(id.toString(), content);
+            save(bestPost, content);
         }
     }
 
     public void natePanScraping() {
-        Elements elements = getWebPage(scrapingConfig.getNateBestUrl()).select(scrapingConfig.getNatePostListCssQuery()).select("li");
+        Elements elements = ScrapeUtil.getWebPage(scrapingConfig.getNateBestUrl()).select(scrapingConfig.getNatePostListCssQuery()).select("li");
         for(Element element : elements) {
             BestPost bestPost = new BestPost();
             String url = scrapingConfig.getNateHomeUrl() + URLDecoder.decode(element.select("a").attr("href"), StandardCharsets.UTF_8);
@@ -108,18 +102,17 @@ public class ScrapingController {
             bestPost.setSiteName(NATE);
 
             //게시글 상세 내용 가져오기
-            Document document = getWebPage(bestPost.getUrl());
+            Document document = ScrapeUtil.getWebPage(bestPost.getUrl());
             Element contentElement = document.getElementById("contentArea");
             String content = contentElement.text();
 
             // DB 저장 및 kafka 로 송신
-            Long id = scrapingService.savePost(bestPost);
-            if (id != null) redisTemplate.opsForValue().set(id.toString(), content);
+            save(bestPost, content);
         }
     }
 
     public void bobaeScraping() {
-        Elements elements = getWebPage(scrapingConfig.getBobaeBestUrl()).select(scrapingConfig.getBobaePostListCssQuery()).select("tbody").select("tr");
+        Elements elements = ScrapeUtil.getWebPage(scrapingConfig.getBobaeBestUrl()).select(scrapingConfig.getBobaePostListCssQuery()).select("tbody").select("tr");
         for(Element element : elements) {
             BestPost bestPost = new BestPost();
             bestPost.setUrl(scrapingConfig.getBobaeHomeUrl() + element.select(scrapingConfig.getBobaeUrlCssQuery()).attr("href"));
@@ -127,30 +120,22 @@ public class ScrapingController {
             bestPost.setSiteName(BOBAE);
 
             //게시글 상세내용 가져오기
-            Document document = getWebPage(bestPost.getUrl());
+            Document document = ScrapeUtil.getWebPage(bestPost.getUrl());
             Element contentElement = document.selectFirst("div.bodyCont");
             String content = contentElement.text();
 
             //DB 저장 및 Kafka로 데이터 송신
-            Long id = scrapingService.savePost(bestPost);
-            if (id!=null) redisTemplate.opsForValue().set(id.toString(), content);
+            save(bestPost, content);
         }
+    }
+
+    public void save(BestPost bestPost, String content) {
+        Long id = scrapingService.savePost(bestPost);
+        if (id!=null) redisTemplate.opsForValue().set(id.toString(), content);
     }
 
     @PreDestroy
     public void shutdownExcutorService() {
         executorService.shutdown();
-    }
-
-    public Document getWebPage(String url) {
-        try {
-            ssl.setSSL();
-            return Jsoup.connect(url).get();
-        } catch (IOException e) {
-            log.error("Can't get web page : {}, {}", url, e);
-        } catch (NoSuchAlgorithmException | KeyManagementException e) {
-            throw new RuntimeException(e);
-        }
-        return null;
     }
 }
