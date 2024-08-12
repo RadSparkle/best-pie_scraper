@@ -11,7 +11,7 @@ public class BestPostProducer {
     @Autowired
     private KafkaTemplate<Long, Long> kafkaTemplate;
 
-    private static final String TOPIC = "best-post";
+    private static final String TOPIC = "index";
 
     public void sendMessage(Long id) {
         kafkaTemplate.send(TOPIC, id);
