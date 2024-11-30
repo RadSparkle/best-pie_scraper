@@ -16,12 +16,19 @@ import java.util.concurrent.Executors;
 @Log4j2
 public class ScrapingController {
     private final List<ScrapingStrategy> scrapingStrategies;
+
     private final ExecutorService executorService = Executors.newFixedThreadPool(4);
 
     @Scheduled(fixedRate = 60000)
     public void scrapeAllSites() {
         for (ScrapingStrategy strategy : scrapingStrategies) {
-            executorService.submit(strategy::scrape);
+            executorService.submit(() -> {
+                try {
+                    strategy.scrape();
+                } catch (Exception e) {
+                    log.error("Scraping failed for strategy: " + strategy.getClass().getName(), e);
+                }
+            });
         }
     }
 
